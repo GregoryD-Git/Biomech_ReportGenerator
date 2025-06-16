@@ -6,4 +6,10 @@ Includes a function to filter and amplify EMG data for standardized EMG data rep
 In the first screen, patient information is loaded from a file contained within the patients' folder.
 
 # Main Report Screen
-![Main Report Generator Screen]()
+![Main Report Generator Screen](images/SGM_report_generator_screen1.png)
+
+# File and Session Selection Screen
+![Selection Screen](images/SGM_report_generator_screen2.png)
+
+# Sample Kinetics Pages
+![Example Report](images/SGM_report_generator_report.png)
