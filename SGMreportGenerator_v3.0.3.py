@@ -1,3 +1,4 @@
+#! C:\Users\Vicon-OEM\AppData\Local\Programs\Python\Python311\python.exe
 # -*- coding: utf-8 -*-
 '''
 Created on Mon Sep 11 16:11:41 2023
@@ -16,6 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import PyPDF2
+import sys
 from PageSettings_SGM import (KinPageSettings as kps,
                         SagittalKinPageSettings as sps,
                         CoronalKinPageSettings as cps,
@@ -23,19 +25,6 @@ from PageSettings_SGM import (KinPageSettings as kps,
                         FootKinematicsPageSettings as fps,
                         EMGpageSettings as eps
                         )
-
-
-"""
-Notes of updates to be made to v3.0:
-1. Manage plotting by function instead of hard-code
-2. Use page settings files from Case-presentation program
-3. Save pdf file to patient top-level folder   
-"""
-# plot in-line so plots only appear in 'Plots' Spyder Window
-# %matplotlib inline
-
-# change to interactive plotting windows
-# %matplotlib qt
 
 ### ------------------------ SITE SPECIFIC SETTINGS ---------------------------
 # Specify folder/file paths, norm data files, and site name
@@ -119,78 +108,98 @@ def get_PatientInfo_fromPyfile(selected_folder, self):
     # List all files in the directory
     py_patient_directory = selected_folder + '/**/*.py*'
     python_files = []
+
+    # initialize variables
+    fne = ['Patient Name']
+    pid = ['1234567']
+    dte = [date.today().strftime('%m-%d-%Y')]
+    brt = [brace_select[0]]
+    wat = [walkaid_select[0]]
+    age = 1
     
     # collect files and creation times
-    for file in glob.glob(py_patient_directory, recursive=True):
-        pyfilename = os.path.basename(file)
-        if pyfilename.endswith('.py') and pyfilename.startswith('Static'):
-            py_filename = file.replace('/','\\')
-            creation_time = os.path.getctime(file)
-            python_files.append((py_filename, creation_time))
-            
-    # sort by creation time - most recent first
-    python_files.sort(key=lambda x: x[1], reverse=True)
+    try:
+        for file in glob.glob(py_patient_directory, recursive=True):
+            pyfilename = os.path.basename(file)
     
-    sorted_python_files = [file[0] for file in python_files]
+            if pyfilename.endswith('.py') and pyfilename.startswith('Static'):
+                py_filename = file.replace('/','\\')
+                creation_time = os.path.getctime(file)
+                python_files.append((py_filename, creation_time))
         
-    # If a Python file is found, open and read it
-    if sorted_python_files:
-        try:
-            # for StaticDataFileName in sorted_python_files:
-            # pull first - most recent - static filename
-            StaticDataFileName = sorted_python_files[0]
-            print(f'Patient data pulled from {os.path.basename(StaticDataFileName)} static file')
-            
-            # open python file
-            exec(open(StaticDataFileName).read())
-            
-            # try to extract variables that should exist in the file
-            ################## patient name and id
-            first_name = self.valueFirstName
-            last_name = self.valueLastName
-            pid = [self.valuePatientNumber]
-            fne = [first_name + " " + last_name]
-            
-            ################## brace trial modifier
-            brt = [self.valueTrialModifier]
-            if brt == 'Barefoot':
-                brt = 'None'
-            
-            ################## date of data collection
-            collect_day = self.valueDataCollectionDate_Day
-            collect_mon = self.valueDataCollectionDate_Month
-            collect_yer = self.valueDataCollectionDate_Year
-            
-            # combine into date string mo-day-year
-            dte = [f'{collect_mon}-{collect_day}-{collect_yer}']
-            
-            ################## patient walk aide used
-            wat = [self.valueAssistiveDevice]
-            
-            ################## patient age at time of collection
-            patient_day = self.valueDateOfBirth_Day
-            patient_month = self.valueDateOfBirth_Month
-            patient_year = self.valueDateOfBirth_Year
-            
-            # Combine strings into a date
-            birth_date_str = f"{patient_year}-{patient_month}-{patient_day}"
-            birth_date = date.strptime(birth_date_str, "%Y-%b-%d")
-            
-            # Format the datetime object to the desired format
-            date.strptime
-            current_date =  date.today()
-            age = current_date.year - birth_date.year - ((current_date.month, current_date.day) < (birth_date.month, birth_date.day))
-            print(f'Patient age is: {age}')
-            return pid, fne, brt, dte, wat, age
-        except:
-            fne = ['Patient Name']
-            pid = ['1234567']
-            dte = [date.today().strftime('%m-%d-%Y')]
-            brt = [brace_select[0]]
-            wat = [walkaid_select[0]]
-            age = 1
-            print('Static python file not found or could not be accessed. Defualt values used for patient information')
-            return pid, fne, brt, dte, wat, age
+        
+        # sort by creation time - most recent first
+        python_files.sort(key=lambda x: x[1], reverse=True)
+        
+        sorted_python_files = [file[0] for file in python_files]
+        
+        # If a Python file is found, open and read it
+        if sorted_python_files:
+            try:
+                # for StaticDataFileName in sorted_python_files:
+                # pull first - most recent - static filename
+                StaticDataFileName = sorted_python_files[0]
+                print(f'Patient data pulled from {os.path.basename(StaticDataFileName)} static file')
+                
+                # open python file
+                exec(open(StaticDataFileName).read())
+                
+                # try to extract variables that should exist in the file
+                ################## patient name and id
+                first_name = self.valueFirstName
+                last_name = self.valueLastName
+                pid = [self.valuePatientNumber]
+                fne = [first_name + " " + last_name]
+                
+                ################## brace trial modifier
+                brt = [self.valueTrialModifier]
+                if brt == 'Barefoot':
+                    brt = 'None'
+                
+                ################## date of data collection
+                collect_day = self.valueDataCollectionDate_Day
+                collect_mon = self.valueDataCollectionDate_Month
+                collect_yer = self.valueDataCollectionDate_Year
+                
+                # combine into date string mo-day-year
+                dte = [f'{collect_mon}-{collect_day}-{collect_yer}']
+                
+                ################## patient walk aide used
+                wat = [self.valueAssistiveDevice]
+                
+                ################## patient age at time of collection
+                patient_day = self.valueDateOfBirth_Day
+                patient_month = self.valueDateOfBirth_Month
+                patient_year = self.valueDateOfBirth_Year
+                
+                # Combine strings into a date
+                birth_date_str = f"{patient_year}-{patient_month}-{patient_day}"
+                birth_date = date.strptime(birth_date_str, "%Y-%b-%d")
+                
+                # Format the datetime object to the desired format
+                date.strptime
+                current_date =  date.today()
+                age = current_date.year - birth_date.year - ((current_date.month, current_date.day) < (birth_date.month, birth_date.day))
+                print(f'Patient age is: {age}')
+                # return pid, fne, brt, dte, wat, age
+            except:
+                # fne = ['Patient Name']
+                # pid = ['1234567']
+                # dte = [date.today().strftime('%m-%d-%Y')]
+                # brt = [brace_select[0]]
+                # wat = [walkaid_select[0]]
+                # age = 1
+                print('Static python file not found or could not be accessed. Defualt values used for patient information')
+                # return pid, fne, brt, dte, wat, age
+    except:
+        # fne = ['Patient Name']
+        # pid = ['1234567']
+        # dte = [date.today().strftime('%m-%d-%Y')]
+        # brt = [brace_select[0]]
+        # wat = [walkaid_select[0]]
+        # age = 1
+        print('Static python file not found or could not be accessed. Defualt values used for patient information')
+    return pid, fne, brt, dte, wat, age
 
 class PatientStudyInfo_Page(tk.Frame):
 
@@ -202,8 +211,9 @@ class PatientStudyInfo_Page(tk.Frame):
         # Open top level folder for patient
         self.selected_folder = filedialog.askdirectory(initialdir=main_directory, title="Select a Folder")
         if self.selected_folder == "":
-            tk.messagebox.showerror('Python Error', 'Error: No files were selected! \nGo back and select a file or close the window')
-            quit()
+            tk.messagebox.showerror('Exiting Program ', ' No folder was selected! \n Window will close with no data to save')
+            tk.Frame.destroy(self)
+            sys.exit()
           
         global patient_directory
         patient_directory = f'{self.selected_folder}/**/*.gcd*'
@@ -225,25 +235,28 @@ class PatientStudyInfo_Page(tk.Frame):
         global VSTused_type_combobox
         global varLR
         
+        # grab focus of the top level window so that typing can be done automatically
+        self.focus_force()
+        
         # Patient Information
         patient_info_frame = tk.LabelFrame(self, text='Patient Information')
-        patient_info_frame.grid(row=0, column=0, sticky='news', padx=10, pady=5) # in row 1 column 1 in frame 1
+        patient_info_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=5) # in row 1 column 1 in frame 1
 
         firstlastname_label = tk.Label(patient_info_frame, text='First and Last Name')
         firstlastname_label.grid(row=0, column=0, padx=5, pady=5) # in row 1 column 1 in label frame 1
-        firstlastname_entry = tk.Entry(patient_info_frame)
+        firstlastname_entry = tk.Entry(patient_info_frame, state='normal')
         firstlastname_entry.grid(row=1, column=0, padx=5, pady=5)
         firstlastname_entry.insert(0, fne[0])
 
         MRN_label = tk.Label(patient_info_frame, text='Medical Record Number')
         MRN_label.grid(row=0, column=1, padx=5, pady=5)
-        MRN_entry = tk.Entry(patient_info_frame)
+        MRN_entry = tk.Entry(patient_info_frame, state='normal')
         MRN_entry.grid(row=1,column=1, padx=5, pady=5)
         MRN_entry.insert(0, pid[0])
         
         Dx_type = tk.Label(patient_info_frame, text='Diagnosis')
         Dx_type.grid(row=0, column=2, padx=5, pady=5)
-        Dx_type_combobox = ttk.Combobox(patient_info_frame, values=dia[0])
+        Dx_type_combobox = ttk.Combobox(patient_info_frame, values=dia[0], state='normal')
         Dx_type_combobox['values'] = Dx_select
         Dx_type_combobox.grid(row=1, column=2, padx=5, pady=5)
         dxIDX = Dx_select.index(dia[0])
@@ -251,7 +264,7 @@ class PatientStudyInfo_Page(tk.Frame):
         
         date_label = tk.Label(patient_info_frame, text='Date of Study')
         date_label.grid(row=0, column=3, padx=5, pady=5)
-        date_entry = tk.Entry(patient_info_frame)
+        date_entry = tk.Entry(patient_info_frame, state='normal')
         date_entry.grid(row=1, column=3, padx=5, pady=5)
         date_entry.insert(0,dte[0])
 
@@ -262,11 +275,11 @@ class PatientStudyInfo_Page(tk.Frame):
 
         # Visit information
         visit_info_frame = tk.LabelFrame(self, text='Visit Information')
-        visit_info_frame.grid(row=1, column=0, sticky='news', padx=10, pady=5)
+        visit_info_frame.grid(row=1, column=0, sticky='nsew', padx=10, pady=5)
 
         visit_type = tk.Label(visit_info_frame, text='Visit Type')
         visit_type.grid(row=0, column=0, padx=5, pady=5)
-        visit_type_combobox = ttk.Combobox(visit_info_frame, values=vis[0])
+        visit_type_combobox = ttk.Combobox(visit_info_frame, values=vis[0], state='normal')
         visit_type_combobox['values'] = visit_select
         visit_type_combobox.grid(row=1, column=0, padx=5, pady=5)
         visIDX = visit_select.index(vis[0])
@@ -274,13 +287,13 @@ class PatientStudyInfo_Page(tk.Frame):
 
         condition_type = tk.Label(visit_info_frame, text='Condition')
         condition_type.grid(row=0, column=1, padx=5, pady=5)
-        condition_type_combobox = ttk.Combobox(visit_info_frame, values= ['Barefoot','Braced','Foot Model','Best Walk','Walker','Shoes','Lift','Comparison','Other'])
+        condition_type_combobox = ttk.Combobox(visit_info_frame, values= ['Barefoot','Braced','Foot Model','Best Walk','Walker','Shoes','Lift','Comparison','Other'], state='normal')
         condition_type_combobox.grid(row=1, column=1, padx=5, pady=5)
         condition_type_combobox.current(0)
 
         brace_type = tk.Label(visit_info_frame, text='Brace Type')
         brace_type.grid(row=0, column=2, padx=5, pady=5)
-        brace_type_combobox = ttk.Combobox(visit_info_frame, values=brt[0])
+        brace_type_combobox = ttk.Combobox(visit_info_frame, values=brt[0], state='normal')
         brace_type_combobox['values'] = brace_select
         brace_type_combobox.grid(row=1, column=2, padx=5, pady=5)
         brtIDX = brace_select.index(brt[0])
@@ -288,7 +301,7 @@ class PatientStudyInfo_Page(tk.Frame):
 
         walkaid_type = tk.Label(visit_info_frame, text='Walk Aid Type')
         walkaid_type.grid(row=0, column=3, padx=5, pady=5)
-        walkaid_type_combobox = ttk.Combobox(visit_info_frame, values=wat[0])
+        walkaid_type_combobox = ttk.Combobox(visit_info_frame, values=wat[0], state='normal')
         walkaid_type_combobox['values'] = walkaid_select
         walkaid_type_combobox.grid(row=1, column=3, padx=5, pady=5)
         watIDX = walkaid_select.index(wat[0])
@@ -301,17 +314,17 @@ class PatientStudyInfo_Page(tk.Frame):
             
         # Report and proceed
         reportplot_info_frame = tk.LabelFrame(self, text='Report, VST, and Proceed to Plot')
-        reportplot_info_frame.grid(row=2, sticky='news', column=0, padx=10, pady=5)
+        reportplot_info_frame.grid(row=2, sticky='nsew', column=0, padx=10, pady=5)
 
         report_type = tk.Label(reportplot_info_frame, text='Report Type')
         report_type.grid(row=0, column=0, padx=5, pady=5)
-        report_type_combobox = ttk.Combobox(reportplot_info_frame, values=['Quick Check','Consistency Both','Consistency Left','Consistency Right','Working','BF-AFO Comparison','Pre-Post Comparison','Normal vs. Best Walk','Quality Assurance','Other'])
+        report_type_combobox = ttk.Combobox(reportplot_info_frame, values=['Quick Check','Consistency Both','Consistency Left','Consistency Right','Working','BF-AFO Comparison','Pre-Post Comparison','Normal vs. Best Walk','Quality Assurance','Other'], state='normal')
         report_type_combobox.grid(row=1, column=0, padx=5, pady=5)
         report_type_combobox.current(0)  
         
         VSTused_type = tk.Label(reportplot_info_frame, text='Select VST Used')
         VSTused_type.grid(row=0, column=1, padx=5, pady=5)
-        VSTused_type_combobox = ttk.Combobox(reportplot_info_frame, values=vst[0])
+        VSTused_type_combobox = ttk.Combobox(reportplot_info_frame, values=vst[0], state='normal')
         VSTused_type_combobox['values'] = vstused_select
         VSTused_type_combobox.grid(row=1, column=1, padx=5, pady=5)
         vstIDX = vstused_select.index(vst[0])
@@ -334,10 +347,10 @@ class PatientStudyInfo_Page(tk.Frame):
         saveproceed_label.grid(row=0, column=3)
         
         save_button = tk.Button(reportplot_info_frame, text='Save and Pick Files', command=lambda: [save_entries(), self.parent.frames[SelectData_Page].tkraise(), self.parent.frames[SelectData_Page].build_PlotReportUI()])
-        save_button.grid(row=1, column=3, sticky='news')
+        save_button.grid(row=1, column=3, sticky='nsew')
 
         exit_button = tk.Button(reportplot_info_frame, text="Close Window Without Saving", command=lambda: [self.parent.destroy()])        
-        exit_button.grid(row=2, column=3, sticky='news')
+        exit_button.grid(row=2, column=3, sticky='nsew')
 
         # pack and scale size of widgets after information has been printed to frames
         for nchild in range(0,9):
@@ -354,36 +367,36 @@ class SelectData_Page(tk.Frame):
     def build_PlotReportUI(self):
         # Navigation frame
         navigation_frame = tk.LabelFrame(self, text='Navigation')
-        navigation_frame.grid(row=0, column=0, sticky='news', padx=5, pady=5)
+        navigation_frame.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
         
         back_button = tk.Button(navigation_frame, text="Back", command = lambda: [self.parent.frames[PatientStudyInfo_Page].tkraise(), self.parent.frames[PatientStudyInfo_Page].build_PatientInfoUI(), clear_bookmarks()])
-        back_button.grid(row=0, column=0, sticky='news', padx=3, pady=5)
+        back_button.grid(row=0, column=0, sticky='nsew', padx=3, pady=5)
         
         save_button = tk.Button(navigation_frame, text="Save PDF", command = lambda: [close_pdf(self)])
-        save_button.grid(row=0, column=1, sticky='news', padx=3, pady=5)
+        save_button.grid(row=0, column=1, sticky='nsew', padx=3, pady=5)
         
         ghost_label = tk.Label(navigation_frame,text="                                                                                                                  ")        
-        ghost_label.grid(row=1, column=0, columnspan=2, sticky='news', padx=3, pady=5)
+        ghost_label.grid(row=1, column=0, columnspan=2, sticky='nsew', padx=3, pady=5)
         
         exit_button = tk.Button(navigation_frame,text="Close Window", command=lambda: [self.parent.destroy()])        
-        exit_button.grid(row=1, column=0, columnspan=2, sticky='news', padx=3, pady=5)
+        exit_button.grid(row=1, column=0, columnspan=2, sticky='nsew', padx=3, pady=5)
         
         # Plot frame
         plot_frame = tk.LabelFrame(self, text='Plot Options for Selected Files')
-        plot_frame.grid(row=0, column=1, sticky='news', padx=5, pady=5)
+        plot_frame.grid(row=0, column=1, sticky='nsew', padx=5, pady=5)
         
         button_plotKMT = tk.Button(plot_frame, text="Kinematics", command=lambda: [plot_kinematics(self), plot_FootModel(self)])
-        button_plotKMT.grid(row=0, column=0, sticky='news', padx=3, pady=3)
+        button_plotKMT.grid(row=0, column=0, sticky='nsew', padx=3, pady=3)
         button_plotSaK = tk.Button(plot_frame, text="Kinetics", command=lambda: [plot_sagittalKinetics(self), plot_coronalKinetics(self)])
-        button_plotSaK.grid(row=0, column=1, sticky='news', padx=3, pady=3)
+        button_plotSaK.grid(row=0, column=1, sticky='nsew', padx=3, pady=3)
         button_plotEMG = tk.Button(plot_frame, text="EMG", command=lambda: [plot_EMG(self)])
-        button_plotEMG.grid(row=0, column=2, sticky='news', padx=3, pady=3)
+        button_plotEMG.grid(row=0, column=2, sticky='nsew', padx=3, pady=3)
         button_plotKKB= tk.Button(plot_frame, text="Kinematics\n& Kinetics", command=lambda: [plot_kinematics(self), plot_sagittalKinetics(self), plot_coronalKinetics(self), plot_FootModel(self)])
-        button_plotKKB.grid(row=1, column=0, sticky='news', padx=3, pady=3)
+        button_plotKKB.grid(row=1, column=0, sticky='nsew', padx=3, pady=3)
         button_plotBas = tk.Button(plot_frame, text="Basic Report\n(no EMG)", command=lambda: [plot_kinematics(self), plot_sagittalKinetics(self), plot_coronalKinetics(self), plot_MuscleLengthVel(self), plot_SpatioTemporal(self), plot_FootModel(self)])
-        button_plotBas.grid(row=1, column=1, sticky='news', padx=3, pady=3)
+        button_plotBas.grid(row=1, column=1, sticky='nsew', padx=3, pady=3)
         button_plotALL = tk.Button(plot_frame, text="Full Report\n(with EMG)", command=lambda: [plot_kinematics(self), plot_sagittalKinetics(self), plot_coronalKinetics(self), plot_MuscleLengthVel(self), plot_EMG(self), plot_SpatioTemporal(self), plot_FootModel(self)])
-        button_plotALL.grid(row=1, column=2, sticky='news', padx=3, pady=3)
+        button_plotALL.grid(row=1, column=2, sticky='nsew', padx=3, pady=3)
         
         # get current combobox selections and set to current
         diagnosis_get = Dx_type_combobox.get()
@@ -426,10 +439,10 @@ class SelectData_Page(tk.Frame):
         
         for curr_session in ordered_patient_folders:
             selectLeft_file_frame = tk.LabelFrame(self, text=f'Select Left {curr_session} files')
-            selectLeft_file_frame.grid(row=rowidx, column=0, sticky='news', padx=5, pady=5)
+            selectLeft_file_frame.grid(row=rowidx, column=0, sticky='nsew', padx=5, pady=5)
            
             selectRight_file_frame = tk.LabelFrame(self, text=f'Select Right {curr_session} files')
-            selectRight_file_frame.grid(row=rowidx, column=1, sticky='news', padx=5, pady=5)
+            selectRight_file_frame.grid(row=rowidx, column=1, sticky='nsew', padx=5, pady=5)
             rowidx += 1
         
             # get file names and print to checkboxes on select file frame
@@ -506,7 +519,6 @@ def get_gcdData(gcd_file, folderfile_name):
         return data_dict  
     
 def get_normData(normfolderfile_name, isEMG, self):
-    
     # 'age' is a global variable either calculated or set to '1' if static file is not available
     if age > 2 and age < 8:
         normFile = norm4_7
@@ -615,10 +627,8 @@ def close_pdf(self):
             pdf_writer.add_outline_item(bookmarks[numpage][0], bookmarks[numpage][1])
             
         with open (output_path, 'wb') as output_file:
-            # output_file = open(f'{condition +MRN +report +studydate}.pdf', 'wb')
             pdf_writer.write(output_file)
         
-            
         output_file.close()
         tk.messagebox.showinfo("PDF file has been saved", "Go back and pick files for a new report or close the window.")
        
@@ -684,6 +694,7 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
     
     # count number of gcd files selected in checkboxes
     gcdNum_selected = len([i for i in self.checkboxes if self.checkboxes[i].get()])
+    # print(f'number of gcds selected is: {gcdNum_selected}')
     
     for file in self.checkboxes:
         # get set variables from checkboxes
@@ -698,7 +709,6 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
             
         # ----------------------------- Set up limb and loop refs -------------
             limb_spec = ['Left','Right']
-            # plotloop = [0,1]
             plotLimb = file[-1]
             
         # ----------------------------- Check for appropriate data ------------
@@ -706,7 +716,7 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
             if plotLimb == 'L':
                 plotloop = [0]
                 # check for kinetics
-                if plot_type == 'Sagittal Kinetics':
+                if plot_type in ['Sagittal Kinetics', 'Coronal Kinetics']:
                     data_label = f'{limb_spec[0]}HipFlexExtMoment'
                     if not data_label in data_dict.keys():
                         print(f'{limb_spec[0]} KINETICS were not found in file {gcd_file}')
@@ -730,7 +740,7 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
             elif plotLimb == 'R':
                 plotloop = [1]
                 # check for kinetics
-                if plot_type == 'Sagittal Kinetics':
+                if plot_type in ['Sagittal Kinetics', 'Coronal Kinetics']:
                     data_label = f'{limb_spec[1]}HipFlexExtMoment'
                     if not data_label in data_dict.keys():
                         print(f'{limb_spec[1]} KINETICS were not found in file {gcd_file}')
@@ -753,6 +763,12 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
               
         # ----------------------------- Set plot page -------------------------
             if not fig:
+                plt.rcParams.update({
+                    'font.size': sf,
+                    'axes.titlesize': 15,
+                    'figure.titlesize': 15
+                })
+                
                 # setting up the plot page
                 fig, axes = plt.subplots(6, 3, figsize=(8.5,11))
                 fig.tight_layout()
@@ -760,7 +776,7 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
                 
                 fig.suptitle(f"Shriners Children's - {site_name}, Motion Analysis Center", fontsize=15)
                 titlenamestr = f'{plot_type} \n' +condition[0:-1] +' ' +report[0:-1] +' Plots'
-                plt.gcf().text(0.5,0.925, titlenamestr, fontsize=12, color='k', horizontalalignment='center')
+                plt.gcf().text(0.5,0.925, titlenamestr, fontsize=sf, color='k', horizontalalignment='center')
         
                 # Flatten the axes1 array
                 axes = axes.flatten()
@@ -910,6 +926,53 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
                             plt.gcf().text(plotxy[0][0]-0.03, y_top - 0.001, upperstr, fontsize=sf-2, color='k')
                             plt.gcf().text(plotxy[0][0]-0.03, y_bot - 0.001, lowerstr, fontsize=sf-2, color='k')
                             
+                        # find knee varus valgus range and flag if 10 degrees or greater
+                        if gcdNum_selected <= 2 and 'Kinematics' in plot_type:
+                            if 'KneeFlexExt' in data_label:
+                                knee_curve = data_dict[limb_spec[Lnum] + data_label]
+                                kf_max = knee_curve.index(max(knee_curve))
+                                # get minimum, but must occur after max
+                                kf_min = knee_curve.index(min(knee_curve[kf_max:]))
+                                # print(f'kf max: {kf_max}; kf min: {kf_min}')
+                            elif 'KneeValgVar' in data_label:
+                                valg_curve = data_dict[limb_spec[Lnum] + data_label]
+                                valg_min = round(min(valg_curve[kf_max:kf_min+1]), 2)
+                                valg_max = round(max(valg_curve[kf_max:kf_min+1]), 2)
+                                valg_range = round(valg_max - valg_min, 2)
+                                text_color = 'k'
+                                correlation = round(np.corrcoef(knee_curve, valg_curve)[0, 1],2)
+                                
+                                # print(f'valg range is: {valg_range}')
+                                x_pos = 45 # as % gait cycle
+                                if Lnum == 0: # left
+                                    y_pos = 22
+                                    l_string = f'L range: {valg_range} ({correlation})'
+                                    if valg_range >= 10:
+                                        text_color = 'r'
+                                        ax.text(x_pos, y_pos, l_string, fontsize=sf-2, color=text_color,
+                                                       bbox=dict(facecolor='yellow', edgecolor='red', boxstyle='round,pad=0.5'),
+                                                       ha='left')
+                                    else:
+                                        ax.text(x_pos, y_pos, l_string, fontsize=sf-2, color=text_color)
+                                        
+                                    # add min/max horizontal lines
+                                    ax.plot([0, 5], [valg_max, valg_max], color='b', linestyle='-', linewidth=0.75)
+                                    ax.plot([0, 5], [valg_min, valg_min], color='b', linestyle='-', linewidth=0.75)
+                                else:
+                                    y_pos = 14
+                                    r_string = f'R range: {valg_range} ({correlation})'
+                                    if valg_range >= 10:
+                                        text_color = 'r'
+                                        ax.text(x_pos, y_pos, r_string, fontsize=sf-2, color=text_color,
+                                                       bbox=dict(facecolor='yellow', edgecolor='red', boxstyle='round,pad=0.5'),
+                                                       ha='left')
+                                    else:
+                                        ax.text(x_pos, y_pos, r_string, fontsize=sf-2, color=text_color)
+                                    
+                                    # add min/max horizontal lines
+                                    ax.plot([0, 5], [valg_max, valg_max], color='r', linestyle='-', linewidth=0.75)
+                                    ax.plot([0, 5], [valg_min, valg_min], color='r', linestyle='-', linewidth=0.75)
+                                                    
                         # plot data
                         ax.plot(x,data_dict[limb_spec[Lnum] + data_label], color=cc[PlotNum], linewidth=0.75)
                         
