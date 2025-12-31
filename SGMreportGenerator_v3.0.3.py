@@ -940,7 +940,7 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
                                 valg_max = round(max(valg_curve[kf_max:kf_min+1]), 2)
                                 valg_range = round(valg_max - valg_min, 2)
                                 text_color = 'k'
-                                correlation = round(np.corrcoef(knee_curve, valg_curve)[0, 1],2)
+                                correlation = round(np.corrcoef(knee_curve, valg_curve)[0, 1]**2,2)
                                 
                                 # print(f'valg range is: {valg_range}')
                                 x_pos = 45 # as % gait cycle
