@@ -15,6 +15,10 @@ import os.path
 import glob
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import seaborn as sns 
+import pandas as pd 
+from matplotlib.gridspec import GridSpec
+
 import numpy as np
 import PyPDF2
 import sys
@@ -57,7 +61,7 @@ brace_select        = ["Barefoot","B AFO-PLS","L AFO-PLS","R AFO-PLS",
                         "L LIFT","R LIFT","B SMO","L SMO","R SMO",
                         "B UCBL","L UCBL","R UCBL",
                         "KAFO","HKAFO","RGO","Parawalker","Shoes Only","Other", "Shod"]
-walkaid_select      = ['None','Posterior', 'Anterior','Canes','Crutches','Other']
+walkaid_select      = ['None','Posterior', 'Anterior','Canes','Crutches','Walker - Wheeled','Other']
 vstused_select      = ['no KAD','no KAD Dypstick','Foot Model no KAD',
                        'Foot Model no KAD w/FootNotFlat','Foot Model Dypstick no KAD',
                        'KAD','KAD Dypstick','Foot Model with KAD',
@@ -397,6 +401,8 @@ class SelectData_Page(tk.Frame):
         button_plotBas.grid(row=1, column=1, sticky='nsew', padx=3, pady=3)
         button_plotALL = tk.Button(plot_frame, text="Full Report\n(with EMG)", command=lambda: [plot_kinematics(self), plot_sagittalKinetics(self), plot_coronalKinetics(self), plot_MuscleLengthVel(self), plot_EMG(self), plot_SpatioTemporal(self), plot_FootModel(self)])
         button_plotALL.grid(row=1, column=2, sticky='nsew', padx=3, pady=3)
+        button_plotSPt = tk.Button(plot_frame, text="Spatiotemporal", command=lambda: [plot_NewSpatioTemporal(self)])
+        button_plotSPt.grid(row=0, column=3, rowspan=2, sticky='nsew', padx=3, pady=3)
         
         # get current combobox selections and set to current
         diagnosis_get = Dx_type_combobox.get()
@@ -972,10 +978,14 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
                                     # add min/max horizontal lines
                                     ax.plot([0, 5], [valg_max, valg_max], color='r', linestyle='-', linewidth=0.75)
                                     ax.plot([0, 5], [valg_min, valg_min], color='r', linestyle='-', linewidth=0.75)
-                                                    
-                        # plot data
-                        ax.plot(x,data_dict[limb_spec[Lnum] + data_label], color=cc[PlotNum], linewidth=0.75)
                         
+                        try: # need to skip if data from the data_label isn't available, e.g. when no trunk data exists.
+                            # plot data
+                            ax.plot(x,data_dict[limb_spec[Lnum] + data_label], color=cc[PlotNum], linewidth=0.75)
+                        except:
+                            # plot data
+                            ax.plot(0,0, color=cc[PlotNum], linewidth=0.75)
+                            
                         # plot timing lines
                         ax.hlines(0, xmin = 0, xmax = datLen, ls='--', color='k', linewidth=0.5)
                         
@@ -993,6 +1003,7 @@ def plot_Data(self, plot_type, page_settings, is_EMG):
                         x1 = data_dict[limb_spec[Lnum] + 'OppositeFootContact'][0]/scaleX
                         x2 = x1
                         ax.plot((x1,x2),(yupper - (yupper - ylower)*0.1,yupper), color=cc[PlotNum], linewidth=0.75)
+                        
                     
                 # -----------------  Adding patient info & file names ---------
                 # call page text function
@@ -1885,6 +1896,237 @@ def plot_SpatioTemporal(self):
     if gcdNum_selected > 16:
         plt.gcf().text(firstcol, lastrow+rowspace, '**ADDITIONAL DATA HAS NOT BEEN PRINTED HERE - current limit is 8 files each side.', fontsize=lf, color='k')
                
+    # Show the plot
+    plt.show()
+    # Save plot as PDF
+    pdffile.savefig(fig)
+    bookmarks.append(('Spatiotemporal', marknum))
+    marknum += 1
+    
+def plot_NewSpatioTemporal(self):
+    
+    global foldername
+    global bookmarks
+    global marknum
+    num_rows = 6
+    num_cols=3
+    
+    # Create a figure with subplots
+    # fig, axes1 = plt.subplots(num_rows, num_cols, figsize=(8.5,11))
+    # fig.tight_layout()
+    # plt.subplots_adjust(left=0.12, right=0.9, top=0.9, bottom=0.01)
+    
+    # fig.suptitle(f"Shriners Children's - {site_name}, Motion Analysis Center", fontsize=15)
+    # titlenamestr = 'Spatiotemporal Parameters \n' +condition[0:-1] +' ' +report[0:-1]
+    # plt.gcf().text(0.5,0.925, titlenamestr, fontsize=12, color='k', horizontalalignment='center')
+
+    # # Flatten the axes1 array
+    # axes1 = axes1.flatten()
+    PlotNum = 0    # used to specify index into colormap from L/R file number
+    LeftPlotNum = 0   # used to track left limb files to specify index into blue colormap 
+    RightPlotNum = 0   # used to track right limb files to specify index into red colormap
+    gcd_count = 0 # used to track total number of gcd files plotted
+    
+    # count number of gcd files selected in checkboxes
+    gcdNum_selected = len([i for i in self.checkboxes if self.checkboxes[i].get()])
+    
+    for file in self.checkboxes:
+        # If the variable is set
+        if self.checkboxes[file].get():
+            gcd_file = file[0:-1] # pulling the "L" or "R" off the end that is assigned in checkbox selection
+            # Open the .gcd file
+            # print(gcd_file)
+            
+        # ----------------------------- Get patient data ----------------------
+            # list(checkboxes).index(gcd_file) pulls the index of the gcd_file in checkboxes to reference appropriate file-path when accessing .gcd files from subfolders
+            # gcd_file will have "L" or "R" ending to specify if the file should be plotted for left or right limbs respectively
+            ffnIDX = int(list(self.checkboxes).index(gcd_file+'L')/2)
+            data_dict = get_gcdData(gcd_file, folderfile_name[::-1][ffnIDX][0])
+            # data_dict = get_gcdData(gcd_file, folderfile_name[list(checkboxes).index(gcd_file+'L')][0])
+            
+        # ----------------------------- Get norm data -------------------------
+            # ONLY GET and PLOT norm data once 
+            if gcd_count == 0:
+                isEMG = False
+                dataNmean_dict, dataNstd_dict, normFile = get_normData(normfolderfile_name, isEMG, self)
+        
+        # ----------------------------- Plot data -----------------------------
+            
+            limb_spec = ['Left','Right']
+            plotloop = [0,1]
+            plotLimb = file[-1]
+            if plotLimb == 'L':
+                plotloop = [0]
+            elif plotLimb == 'R':
+                plotloop = [1]
+            
+            for Lnum in plotloop:
+                n = 16 # default number of colormap vectors to use in plotting
+                if gcdNum_selected < 16 and varLR.get() == 0:
+                    n = round(gcdNum_selected/2)
+                elif gcdNum_selected < 8 and varLR.get() != 0:
+                    n = gcdNum_selected
+               
+                if Lnum == 0:
+                    cc = plt.cm.winter(np.linspace(0,1,n)) # left blue-->green
+                    PlotNum = LeftPlotNum
+                    LeftPlotNum += 1
+                     
+                elif Lnum == 1:
+                    
+                    cc = plt.cm.autumn(np.linspace(0,1,n)) # right red-->yellow
+                    PlotNum = RightPlotNum
+                    RightPlotNum += 1
+                  
+                # setting plotting parameters
+                sf = 8
+                mf = 10
+                lf = 12
+                
+                # -------------------------------------------------------------
+                # seaborn based plot
+                # -------------------------------------------------------------
+                # normative_df, 
+                # patient_df, 
+                # patient_name="", 
+                # patient_id="", 
+                # test_date="" ): 
+                """ normative_df columns example: ['measure', 'value', 'limb', 'type'] 
+                # type='norm' patient_df columns example: ['measure', 'value', 'limb', 'type'] 
+                # type='patient' limb: 'L' or 'R' """ 
+                if gcd_count == 0:
+                    sns.set(style="white") # --- Create figure with GridSpec --- 
+                    fig = plt.figure(figsize=(16, 12)) 
+                    gs = GridSpec(2, 4, height_ratios=[1.2, 1], figure=fig) 
+                
+                    # Top subplot spans both columns 
+                    ax_top = fig.add_subplot(gs[0, :]) 
+                    
+                    # Remaining subplots 
+                    ax_spatial = fig.add_subplot(gs[1, 0]) 
+                    ax_temporal = fig.add_subplot(gs[1, 1]) 
+                    ax_cadence = fig.add_subplot(gs[1, 2]) 
+                    ax_speed = fig.add_subplot(gs[1, 3]) 
+                
+                # --- Helper function for each subplot --- 
+                def plot_measure(ax, measures, title, y_lim, horizontal=False): 
+                    # Filter data 
+                    # normDAT = round(dataNmean_dict['OppositeFootOff'][0] + dataNstd_dict['OppositeFootOff'][0],1)
+                    # norm = normative_df[normative_df['measure'].isin(measures)] 
+                    
+                    # pre-set categorical axis ticks
+                    ax.set_yticks(range(len(measures))) 
+                    ax.set_yticklabels(measures)
+                    
+                    # get norm data
+                    for measure in measures:
+                        m       = dataNmean_dict[measure][0]
+                        sd      = dataNstd_dict[measure][0]
+                        meas    = measures.index(measure) # convert string → numeric position
+                        
+                        if horizontal: 
+                            # Draw the SD box 
+                            ax.add_patch( 
+                                plt.Rectangle( 
+                                    (m - sd, meas - 0.3), # (x, y) lower-left corner 
+                                    2 * sd, # width 
+                                    0.6, # height 
+                                    color='lightgray', 
+                                    alpha=0.6 ) 
+                                ) 
+                            # Draw the mean line 
+                            ax.plot([m, m], 
+                                    [meas - 0.3, meas + 0.3], 
+                                    color='black', linewidth=2) 
+                        else: 
+                            ax.add_patch( 
+                                plt.Rectangle( 
+                                    (meas - 0.3, m - sd), 
+                                    0.6, 
+                                    2 * sd, 
+                                    color='lightgray', 
+                                    alpha=0.6 ) 
+                                ) 
+                            ax.plot(
+                                [meas - 0.3, meas + 0.3], 
+                                [m, m], 
+                                color='black', 
+                                linewidth=2)
+                    
+                        # patient data
+                        indData = data_dict[limb_spec[Lnum] +measure][0]
+                        # Scatter for patient data 
+                        sns.scatterplot( 
+                            x=[indData] if horizontal else [measure], 
+                            y=[measure] if horizontal else [indData], 
+                            hue=[limb_spec[Lnum]], 
+                            palette={'Left': 'blue', 'Right': 'red'}, 
+                            s=80, 
+                            ax=ax, 
+                            legend=True if gcd_count == 0 else False) 
+                    ax.set_title(title, fontsize=lf) 
+                    
+                    if horizontal: 
+                        ax.set_xlabel("Percent of Gait Cycle (%)") 
+                        ax.set_xlim(y_lim[0], y_lim[1]) 
+                        ax.set_ylabel("") 
+                    else: 
+                        ax.set_ylabel("Value") 
+                        ax.set_xlabel("Measure") 
+                        ax.set_ylim(y_lim[0], y_lim[1])
+                        
+                # --- Plot each section --- 
+                # 1. Top horizontal subplot (gait cycle %) 
+                plot_measure(ax_top, 
+                             measures=['OppositeFootOff', 'OppositeFootContact', 
+                                       'FootOff', 'SingleSupport', 
+                                       'DoubleSupport1', 'DoubleSupport2', 
+                                       'Stance', 'Swing',
+                                       'DoubleSupport'], 
+                             title="Gait Cycle Timing (% of Gait Cycle)", 
+                             y_lim=[0, 80],
+                             horizontal=True
+                             ) 
+                # 2. Spatial 
+                plot_measure(ax_spatial, 
+                             measures=['StepLength', 'StrideLength'], 
+                             title="Spatial Parameters",
+                             y_lim=[0, 2]) 
+                # 3. Temporal 
+                plot_measure(ax_temporal, 
+                             measures=['StepTime', 'StrideTime'], 
+                             title="Temporal Parameters",
+                             y_lim=[0, 5]) 
+                # 4. Cadence 
+                plot_measure(ax_cadence, 
+                             measures=['Cadence'], 
+                             title="Cadence",
+                             y_lim=[0, 150]) 
+                # 5. Speed 
+                plot_measure(ax_speed, 
+                             measures=['Speed'], 
+                             title="Walking Speed",
+                             y_lim=[0, 200]) 
+                # --- Add patient metadata at bottom --- 
+                # fig.text( 0.5, 0.02, f"Patient: {patient_name} | ID: {patient_id} | Date: {test_date}", 
+                #          ha='center', fontsize=12 ) 
+                plt.tight_layout(rect=[0, 0.05, 1, 1]) 
+                
+                # GCD file name to print
+                # gcdfilestr = (f'{gcd_file}')
+                    
+                # Print patient info, data titles, and norm data only once
+            # if gcd_count == 0:
+            #     # --------------- Note on data used for norms -----------------
+            #     normDataUsed = 'Greenville, Salt Lake, & Spokane'
+            #     if normFile[0:2] == 'Gr':
+            #         normDataUsed = 'Greenville'
+            #     normMessage = f"**Gray bands are mean +/- 1SD range during barefoot walking for typically developing children aged {normFile[7:-4]}- collected by Shriners Children's {normDataUsed}**"
+                    
+        if self.checkboxes[file].get():
+            gcd_count += 1
+                
+             
     # Show the plot
     plt.show()
     # Save plot as PDF

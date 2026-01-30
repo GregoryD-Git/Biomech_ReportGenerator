@@ -1,5 +1,3 @@
-# Py3_NexusSGMreportGenerator
-Python script for plotting gcd file data within Nexus for clinical quality assurance
 - Copy SGMreportGenerator_v3.03.py and PageSettings_SGM.py to local folder
 
 - check requirements.txt file for third party modules to install
